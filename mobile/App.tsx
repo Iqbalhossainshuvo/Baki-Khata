@@ -17,7 +17,7 @@ configureGoogle();
 
 export default function App() {
   const t = useTheme();
-  const [fonts] = useFonts({ HindSiliguri_400Regular, HindSiliguri_500Medium, HindSiliguri_600SemiBold, HindSiliguri_700Bold });
+  const [fontsLoaded, fontError] = useFonts({ HindSiliguri_400Regular, HindSiliguri_500Medium, HindSiliguri_600SemiBold, HindSiliguri_700Bold });
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
 
   useEffect(() => {
@@ -28,7 +28,8 @@ export default function App() {
     signOut().finally(() => setProfile(null));
   }, []);
 
-  const ready = fonts && profile !== undefined;
+  // A font failure must not block the app — fall back to the system font.
+  const ready = (fontsLoaded || !!fontError) && profile !== undefined;
   return (
     <SafeAreaProvider>
       <StatusBar style={t.dark ? 'light' : 'dark'} />

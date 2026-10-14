@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { signIn, type Profile } from '../google';
+import { errorText, signIn, type Profile } from '../google';
 import { useTheme } from '../theme';
 import { T, useToast } from '../ui';
 
@@ -16,14 +16,17 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const go = async () => {
     setBusy(true);
+    setError('');
     try {
       const p = await signIn();
       if (p) onSignedIn(p);
     } catch (e) {
-      toast('⚠️ ' + (e instanceof Error ? e.message : String(e)));
+      setError(errorText(e));
+      toast('⚠️ লগইন হয়নি');
     } finally {
       setBusy(false);
     }
@@ -63,6 +66,14 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
           </>
         )}
       </Pressable>
+      {busy && (
+        <Pressable onPress={() => setBusy(false)} hitSlop={10} style={{ alignSelf: 'center', marginTop: 12 }}>
+          <T style={{ color: t.blue, fontSize: 15 }}>বাতিল করে আবার চেষ্টা করুন</T>
+        </Pressable>
+      )}
+      {!!error && (
+        <T selectable style={{ fontSize: 13, color: t.red, textAlign: 'center', marginTop: 12 }}>⚠️ {error}</T>
+      )}
       <T style={{ fontSize: 12, color: t.sub, textAlign: 'center', marginTop: 12 }}>
         প্রথমবার লগইন করলে আপনার Drive-এ “বাকি খাতা” নামে একটি Google Sheet তৈরি হবে।
       </T>

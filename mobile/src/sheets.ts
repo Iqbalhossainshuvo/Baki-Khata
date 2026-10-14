@@ -12,10 +12,20 @@ export type Book = { id: string; url: string; tab: string };
 
 async function req<T = any>(url: string, init: RequestInit = {}, retry = true): Promise<T> {
   const token = await accessToken();
-  const res = await fetch(url, {
-    ...init,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      signal: ctrl.signal,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+  } catch {
+    throw new Error('ইন্টারনেট সংযোগ পাওয়া যায়নি');
+  } finally {
+    clearTimeout(timer);
+  }
   if (res.status === 401 && retry) {
     await dropToken(token);
     return req<T>(url, init, false);
