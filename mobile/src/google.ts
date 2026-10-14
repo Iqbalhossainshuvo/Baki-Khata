@@ -17,7 +17,13 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const android = Platform.OS === 'android';
 const GoogleAuth = android ? (require('../modules/google-auth/src').default as typeof import('../modules/google-auth/src').default) : null;
 
-export type Profile = { name: string; email: string; photo: string | null };
+export type Profile = { name: string; email: string; photo: string | null; guest?: boolean };
+
+// Using the app without an account: entries live only on this phone.
+const GUEST_KEY = 'guestMode';
+export const GUEST: Profile = { name: 'অতিথি', email: 'local', photo: null, guest: true };
+export const startGuest = () => AsyncStorage.setItem(GUEST_KEY, '1');
+export const endGuest = () => AsyncStorage.removeItem(GUEST_KEY);
 
 const PROFILE_KEY = 'googleProfile';
 
@@ -71,6 +77,7 @@ async function fetchDriveUser(token: string): Promise<Profile> {
 
 /** Restores a previous session without UI; null when the user must sign in. */
 export async function restoreSession(): Promise<Profile | null> {
+  if (await AsyncStorage.getItem(GUEST_KEY)) return GUEST;
   if (android) {
     const saved = await AsyncStorage.getItem(PROFILE_KEY);
     return saved ? (JSON.parse(saved) as Profile) : null;

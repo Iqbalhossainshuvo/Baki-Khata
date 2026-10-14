@@ -11,7 +11,7 @@ const POINTS = [
   ['📱', 'যেকোনো ফোনে লগইন করলেই সব হিসাব'],
 ];
 
-export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
+export function Login({ onSignedIn, onGuest }: { onSignedIn: (p: Profile) => void; onGuest: () => void }) {
   const t = useTheme();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -66,6 +66,14 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
           </>
         )}
       </Pressable>
+      {!busy && (
+        <Pressable
+          onPress={onGuest}
+          style={({ pressed }) => ({ height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 10, backgroundColor: t.fill, opacity: pressed ? 0.7 : 1 })}
+        >
+          <T w="semibold">লগইন ছাড়া ব্যবহার করুন</T>
+        </Pressable>
+      )}
       {busy && (
         <Pressable onPress={() => setBusy(false)} hitSlop={10} style={{ alignSelf: 'center', marginTop: 12 }}>
           <T style={{ color: t.blue, fontSize: 15 }}>বাতিল করে আবার চেষ্টা করুন</T>
@@ -75,7 +83,7 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
         <T selectable style={{ fontSize: 13, color: t.red, textAlign: 'center', marginTop: 12 }}>⚠️ {error}</T>
       )}
       <T style={{ fontSize: 12, color: t.sub, textAlign: 'center', marginTop: 12 }}>
-        প্রথমবার লগইন করলে আপনার Drive-এ “বাকি খাতা” নামে একটি Google Sheet তৈরি হবে।
+        Google দিয়ে লগইন করলে হিসাব থাকবে আপনার Drive-এর “বাকি খাতা” শিটে। লগইন ছাড়া ব্যবহার করলে হিসাব শুধু এই ফোনে থাকবে — পরে সেটিংস থেকে Google-এ নিতে পারবেন।
       </T>
     </View>
   );

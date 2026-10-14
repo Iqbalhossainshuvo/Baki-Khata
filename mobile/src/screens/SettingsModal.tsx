@@ -1,21 +1,42 @@
-import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CURRENCIES } from '../ledger';
 import { useStore } from '../store';
 import { useTheme } from '../theme';
 import { Avatar, Group, Section, Sep, T } from '../ui';
-import { useSignOut } from '../auth';
+import { useAuth } from '../auth';
+import { errorText } from '../google';
 
 export function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
   const { profile, book, cur, setCur } = useStore();
-  const signOut = useSignOut();
+  const { signOut, connectGoogle } = useAuth();
+  const [connecting, setConnecting] = useState(false);
+  const guest = !!profile.guest;
 
   const logout = () =>
-    Alert.alert('লগ আউট করবেন?', 'আপনার ডাটা Google Drive-এ নিরাপদে থাকবে। আবার লগইন করলেই ফিরে পাবেন।', [
-      { text: 'বাতিল', style: 'cancel' },
-      { text: 'লগ আউট', style: 'destructive', onPress: () => { onClose(); signOut(); } },
-    ]);
+    Alert.alert(
+      guest ? 'লগইন স্ক্রিনে ফিরে যাবেন?' : 'লগ আউট করবেন?',
+      guest
+        ? 'এই ফোনের হিসাব মুছবে না। আবার “লগইন ছাড়া ব্যবহার করুন” চাপলেই ফিরে পাবেন।'
+        : 'আপনার ডাটা Google Drive-এ নিরাপদে থাকবে। আবার লগইন করলেই ফিরে পাবেন।',
+      [
+        { text: 'বাতিল', style: 'cancel' },
+        { text: guest ? 'ফিরে যান' : 'লগ আউট', style: 'destructive', onPress: () => { onClose(); signOut(); } },
+      ],
+    );
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      await connectGoogle();
+    } catch (e) {
+      Alert.alert('Google-এ নেওয়া যায়নি', errorText(e) + '\n\nআপনার হিসাব এই ফোনেই আছে।');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -27,8 +48,24 @@ export function SettingsModal({ visible, onClose }: { visible: boolean; onClose:
           <View style={{ alignItems: 'center', marginBottom: 26 }}>
             {profile.photo ? <Image source={{ uri: profile.photo }} style={{ width: 72, height: 72, borderRadius: 36 }} /> : <Avatar name={profile.name} size={72} />}
             <T w="bold" style={{ fontSize: 22, marginTop: 10, lineHeight: 32 }}>{profile.name}</T>
-            <T style={{ fontSize: 15, color: t.sub }}>{profile.email}</T>
+            {!guest && <T style={{ fontSize: 15, color: t.sub }}>{profile.email}</T>}
           </View>
+
+          {guest && (
+            <Group style={{ padding: 16 }}>
+              <T w="semibold" style={{ fontSize: 16 }}>📱 হিসাব শুধু এই ফোনে আছে</T>
+              <T style={{ fontSize: 14, color: t.sub, marginTop: 4, lineHeight: 21 }}>
+                ফোন হারালে বা অ্যাপ মুছলে হিসাব হারিয়ে যাবে। Google দিয়ে লগইন করলে সব হিসাব আপনার Google Drive-এ চলে যাবে এবং যেকোনো ফোনে পাবেন।
+              </T>
+              <Pressable
+                onPress={connect}
+                disabled={connecting}
+                style={({ pressed }) => ({ marginTop: 12, height: 46, borderRadius: 12, backgroundColor: t.blue, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 })}
+              >
+                {connecting ? <ActivityIndicator color="#fff" /> : <T w="semibold" style={{ color: '#fff', fontSize: 16 }}>Google দিয়ে লগইন করে ব্যাকআপ নিন</T>}
+              </Pressable>
+            </Group>
+          )}
 
           <Section>মুদ্রা</Section>
           <Group style={{ padding: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -41,13 +78,19 @@ export function SettingsModal({ visible, onClose }: { visible: boolean; onClose:
 
           <Section>ডাটা</Section>
           <Group>
-            <Row label="Google Sheet খুলুন ↗" color={t.blue} disabled={!book} onPress={() => book && Linking.openURL(book.url)} />
-            <Sep />
-            <Row label="লগ আউট" color={t.red} onPress={logout} />
+            {!guest && (
+              <>
+                <Row label="Google Sheet খুলুন ↗" color={t.blue} disabled={!book} onPress={() => book && Linking.openURL(book.url)} />
+                <Sep />
+              </>
+            )}
+            <Row label={guest ? 'লগইন স্ক্রিনে ফিরে যান' : 'লগ আউট'} color={t.red} onPress={logout} />
           </Group>
-          <T style={{ fontSize: 13, color: t.sub, textAlign: 'center', lineHeight: 20 }}>
-            সব হিসাব আপনার নিজের Google Drive-এর “বাকি খাতা” শিটে সেভ হয়।{'\n'}অ্যাপটি শুধু নিজের তৈরি করা ফাইলই দেখতে পারে।
-          </T>
+          {!guest && (
+            <T style={{ fontSize: 13, color: t.sub, textAlign: 'center', lineHeight: 20 }}>
+              সব হিসাব আপনার নিজের Google Drive-এর “বাকি খাতা” শিটে সেভ হয়।{'\n'}অ্যাপটি শুধু নিজের তৈরি করা ফাইলই দেখতে পারে।
+            </T>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>

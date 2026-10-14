@@ -122,6 +122,14 @@ export async function listEntries(b: Book): Promise<Entry[]> {
     }));
 }
 
+export async function appendEntries(b: Book, list: Entry[]) {
+  if (!list.length) return;
+  await req(`${SHEETS}/${b.id}/values/${range(b, 'A:F')}:append?valueInputOption=RAW`, {
+    method: 'POST',
+    body: JSON.stringify({ values: list.map(e => [toSerial(e.date), e.customer, e.type, e.amount, e.note, e.id]) }),
+  });
+}
+
 export async function appendEntry(b: Book, e: Entry) {
   await req(`${SHEETS}/${b.id}/values/${range(b, 'A:F')}:append?valueInputOption=RAW`, {
     method: 'POST',

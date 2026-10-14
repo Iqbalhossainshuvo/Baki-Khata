@@ -46,7 +46,10 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
     return bookRef.current;
   }, []);
 
+  const guest = !!profile.guest;
+
   const refresh = useCallback(async () => {
+    if (guest) { setSyncing(false); setLoaded(true); return; }
     setSyncing(true);
     try {
       save(await listEntries(await getBook()));
@@ -58,7 +61,7 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
       setSyncing(false);
       setLoaded(true);
     }
-  }, [getBook, save]);
+  }, [guest, getBook, save]);
 
   useEffect(() => {
     (async () => {
@@ -78,24 +81,26 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
   const add: Store['add'] = useCallback(async e => {
     const entry: Entry = { ...e, id: uid(), date: Date.now() };
     save([...entriesRef.current, entry]);
+    if (guest) return;
     try {
       await appendEntry(await getBook(), entry);
     } catch (err) {
       save(entriesRef.current.filter(x => x.id !== entry.id));
       throw err;
     }
-  }, [getBook, save]);
+  }, [guest, getBook, save]);
 
   const remove: Store['remove'] = useCallback(async id => {
     const before = entriesRef.current;
     save(before.filter(x => x.id !== id));
+    if (guest) return;
     try {
       await deleteEntry(await getBook(), id);
     } catch (err) {
       save(before);
       throw err;
     }
-  }, [getBook, save]);
+  }, [guest, getBook, save]);
 
   const setCur = useCallback((c: string) => {
     setCurState(c);
