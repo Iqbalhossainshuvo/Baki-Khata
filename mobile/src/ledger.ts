@@ -63,3 +63,10 @@ export function avatarColor(s: string) {
   return COLORS[h % COLORS.length];
 }
 export const initial = (s: string) => ([...s.trim()][0] || '?').toUpperCase();
+
+// Reminder message; {নাম} and {টাকা} are filled in per customer.
+export const DEFAULT_TEMPLATE =
+  'আসসালামু আলাইকুম {নাম}, আপনার কাছে বাকি আছে {টাকা}। সুবিধামতো পরিশোধ করার অনুরোধ রইল। ধন্যবাদ।';
+
+export const fillTemplate = (tpl: string, name: string, amount: string) =>
+  tpl.replace(/\{নাম\}/g, name).replace(/\{টাকা\}/g, amount);

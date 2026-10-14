@@ -21,6 +21,15 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.bakikhata.app',
+    // Only network access. Expo otherwise adds storage, vibrate and
+    // "draw over other apps" permissions that Play Protect treats as suspicious.
+    permissions: ['android.permission.INTERNET'],
+    blockedPermissions: [
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.VIBRATE',
+    ],
     versionCode: Number(process.env.ANDROID_VERSION_CODE) || 1,
     adaptiveIcon: {
       backgroundColor: '#0a84ff',

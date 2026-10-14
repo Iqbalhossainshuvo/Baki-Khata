@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CURRENCIES } from '../ledger';
+import { CURRENCIES, DEFAULT_TEMPLATE } from '../ledger';
 import { useStore } from '../store';
-import { useTheme } from '../theme';
+import { font, useTheme } from '../theme';
 import { Avatar, Group, Section, Sep, T } from '../ui';
 import { useAuth } from '../auth';
 import { errorText } from '../google';
 
 export function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
-  const { profile, book, cur, setCur } = useStore();
+  const { profile, book, cur, setCur, template, setTemplate } = useStore();
+  const [tpl, setTpl] = useState(template);
+  useEffect(() => setTpl(template), [template]);
   const { signOut, connectGoogle } = useAuth();
   const [connecting, setConnecting] = useState(false);
   const guest = !!profile.guest;
@@ -74,6 +76,30 @@ export function SettingsModal({ visible, onClose }: { visible: boolean; onClose:
                 <T w="semibold" style={{ fontSize: 15, color: c === cur ? '#fff' : t.text }}>{c}</T>
               </Pressable>
             ))}
+          </Group>
+
+          <Section>রিমাইন্ডার মেসেজ</Section>
+          <Group>
+            <TextInput
+              value={tpl}
+              onChangeText={setTpl}
+              onBlur={() => setTemplate(tpl)}
+              multiline
+              textAlignVertical="top"
+              style={{ minHeight: 100, fontFamily: font.regular, fontSize: 16, color: t.text, paddingHorizontal: 16, paddingVertical: 12, lineHeight: 24 }}
+            />
+            <Sep />
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}>
+              <T style={{ flex: 1, fontSize: 13, color: t.sub }}>{'{নাম}'} আর {'{টাকা}'} প্রত্যেক কাস্টমারের জন্য নিজে থেকে বসে যাবে।</T>
+              {tpl !== template && (
+                <Pressable onPress={() => setTemplate(tpl)} hitSlop={8}><T w="semibold" style={{ color: t.blue, fontSize: 15 }}>সেভ</T></Pressable>
+              )}
+              {tpl === template && template !== DEFAULT_TEMPLATE && (
+                <Pressable onPress={() => { setTpl(DEFAULT_TEMPLATE); setTemplate(DEFAULT_TEMPLATE); }} hitSlop={8}>
+                  <T style={{ color: t.blue, fontSize: 15 }}>আগের মতো</T>
+                </Pressable>
+              )}
+            </View>
           </Group>
 
           <Section>ডাটা</Section>

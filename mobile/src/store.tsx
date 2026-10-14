@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Profile } from './google';
-import { uid, type Entry, type EntryType } from './ledger';
+import { DEFAULT_TEMPLATE, uid, type Entry, type EntryType } from './ledger';
 import { appendEntry, deleteEntry, listEntries, openBook, type Book } from './sheets';
 
 type Store = {
@@ -13,6 +13,8 @@ type Store = {
   error: string;
   cur: string;
   setCur: (c: string) => void;
+  template: string;
+  setTemplate: (t: string) => void;
   refresh: () => Promise<void>;
   add: (e: { customer: string; type: EntryType; amount: number; note: string }) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -31,6 +33,7 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
   const [syncing, setSyncing] = useState(true);
   const [error, setError] = useState('');
   const [cur, setCurState] = useState('SAR');
+  const [template, setTemplateState] = useState(DEFAULT_TEMPLATE);
   const bookRef = useRef<Book | null>(null);
 
   const save = useCallback((list: Entry[]) => {
@@ -66,8 +69,11 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
   useEffect(() => {
     (async () => {
       try {
-        const [cached, c] = await Promise.all([AsyncStorage.getItem(cacheKey), AsyncStorage.getItem('currency')]);
+        const [cached, c, tpl] = await Promise.all([
+          AsyncStorage.getItem(cacheKey), AsyncStorage.getItem('currency'), AsyncStorage.getItem('reminderTemplate'),
+        ]);
         if (c) setCurState(c);
+        if (tpl) setTemplateState(tpl);
         if (cached) { setEntries(JSON.parse(cached)); setLoaded(true); }
       } catch {}
       refresh().catch(() => {});
@@ -107,9 +113,15 @@ export function StoreProvider({ profile, children }: { profile: Profile; childre
     AsyncStorage.setItem('currency', c).catch(() => {});
   }, []);
 
+  const setTemplate = useCallback((tpl: string) => {
+    const v = tpl.trim() ? tpl : DEFAULT_TEMPLATE;
+    setTemplateState(v);
+    AsyncStorage.setItem('reminderTemplate', v).catch(() => {});
+  }, []);
+
   const value = useMemo(
-    () => ({ profile, book, entries, loaded, syncing, error, cur, setCur, refresh, add, remove }),
-    [profile, book, entries, loaded, syncing, error, cur, setCur, refresh, add, remove],
+    () => ({ profile, book, entries, loaded, syncing, error, cur, setCur, template, setTemplate, refresh, add, remove }),
+    [profile, book, entries, loaded, syncing, error, cur, setCur, template, setTemplate, refresh, add, remove],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

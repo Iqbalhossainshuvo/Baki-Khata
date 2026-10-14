@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { customers, dayTime, money, status, type Customer, type EntryType } from '../ledger';
+import { customers, dayTime, fillTemplate, money, status, type Customer, type EntryType } from '../ledger';
 import { useStore } from '../store';
-import { useTheme } from '../theme';
+import { font, useTheme } from '../theme';
 import { Avatar, Btn, Field, Group, Section, Sep, T, ToastProvider, useToast } from '../ui';
 
 export function CustomerModal({ k, onClose }: { k: string | null; onClose: () => void }) {
@@ -35,7 +35,8 @@ export function CustomerModal({ k, onClose }: { k: string | null; onClose: () =>
 function Body({ c }: { c: Customer }) {
   const t = useTheme();
   const toast = useToast();
-  const { cur, add, remove } = useStore();
+  const { cur, add, remove, template } = useStore();
+  const [draft, setDraft] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<EntryType | null>(null);
@@ -69,8 +70,17 @@ function Body({ c }: { c: Customer }) {
       },
     ]);
 
-  const remind = () =>
-    Share.share({ message: `আসসালামু আলাইকুম ${c.name}, আপনার কাছে বাকি আছে ${money(cur, c.bal)}। সুবিধামতো পরিশোধ করার অনুরোধ রইল। ধন্যবাদ।` });
+  // Open an editable draft of the reminder; the user can change it before sending.
+  const remind = () => setDraft(d => (d === null ? fillTemplate(template, c.name, money(cur, c.bal)) : null));
+
+  const sendWhatsApp = () => {
+    if (!draft?.trim()) return toast('মেসেজ লিখুন');
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(draft)}`).catch(() => toast('WhatsApp খোলা যায়নি'));
+  };
+  const sendOther = () => {
+    if (!draft?.trim()) return toast('মেসেজ লিখুন');
+    Share.share({ message: draft });
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -82,10 +92,27 @@ function Body({ c }: { c: Customer }) {
           <T w="bold" style={{ fontSize: 34, lineHeight: 48, color: s === 'due' ? t.red : s === 'adv' ? t.green : t.text }}>{money(cur, c.bal)}</T>
           {s === 'due' && (
             <Pressable onPress={remind} style={{ marginTop: 8, backgroundColor: t.fill, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 }}>
-              <T w="medium" style={{ fontSize: 14, color: t.blue }}>📨 রিমাইন্ডার পাঠান</T>
+              <T w="medium" style={{ fontSize: 14, color: t.blue }}>{draft === null ? '📨 রিমাইন্ডার পাঠান' : 'রিমাইন্ডার বন্ধ করুন'}</T>
             </Pressable>
           )}
         </View>
+
+        {draft !== null && (
+          <Group>
+            <T w="medium" style={{ fontSize: 13, color: t.sub, marginHorizontal: 16, marginTop: 12 }}>মেসেজ এডিট করে পাঠান</T>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              multiline
+              textAlignVertical="top"
+              style={{ minHeight: 110, fontFamily: font.regular, fontSize: 16, color: t.text, paddingHorizontal: 16, paddingVertical: 10, lineHeight: 24 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 10, padding: 16, paddingTop: 4 }}>
+              <Btn style={{ flex: 1 }} title="WhatsApp" color="#25D366" onPress={sendWhatsApp} />
+              <Btn style={{ flex: 1 }} title="অন্য অ্যাপে" onPress={sendOther} />
+            </View>
+          </Group>
+        )}
 
         <Group>
           <Field label="পরিমাণ" placeholder="0" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
