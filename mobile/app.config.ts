@@ -10,7 +10,7 @@ const config: ExpoConfig = {
   name: 'বাকি খাতা',
   slug: 'baki-khata',
   scheme: 'bakikhata',
-  version: '1.0.0',
+  version: process.env.APP_VERSION || '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
@@ -21,6 +21,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.bakikhata.app',
+    versionCode: Number(process.env.ANDROID_VERSION_CODE) || 1,
     adaptiveIcon: {
       backgroundColor: '#0a84ff',
       foregroundImage: './assets/android-icon-foreground.png',

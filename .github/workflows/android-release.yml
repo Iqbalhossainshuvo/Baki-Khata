@@ -1,0 +1,96 @@
+name: Android release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 1.0.0'
+        required: true
+        default: '1.0.0'
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency: android-release
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Normalise version
+        run: echo "APP_VERSION=${APP_VERSION#v}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install --clean
+        env:
+          CI: 1
+
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Sign APK
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          OUT="$GITHUB_WORKSPACE/baki-khata-$APP_VERSION.apk"
+          if [ -n "$KS_PASS" ] && [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+            "$BT/apksigner" sign --ks "$RUNNER_TEMP/release.p12" --ks-type PKCS12 --ks-pass env:KS_PASS \
+              --ks-key-alias bakikhata --key-pass env:KS_PASS --out "$OUT" "$APK"
+            echo "SIGNED=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD secrets are not set. The APK is signed with the debug key, Google sign-in will not work and no release is published."
+            cp "$APK" "$OUT"
+          fi
+          "$BT/apksigner" verify --print-certs "$OUT" | grep -i "SHA-1"
+          echo "APK=$OUT" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baki-khata-apk
+          path: ${{ env.APK }}
+
+      - name: Publish GitHub release
+        if: env.SIGNED == '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: বাকি খাতা v${{ env.APP_VERSION }}
+          files: ${{ env.APK }}
+          body: |
+            ## বাকি খাতা — Android
+
+            1. নিচের **baki-khata-${{ env.APP_VERSION }}.apk** ফাইলটি ফোনে ডাউনলোড করুন।
+            2. খুলে **Install** চাপুন (প্রথমবার "Unknown apps / অজানা উৎস" থেকে ইন্সটলের অনুমতি দিতে হতে পারে)।
+            3. অ্যাপ খুলে **Google দিয়ে চালিয়ে যান** চাপুন — আপনার হিসাব থাকবে আপনার নিজের Google Drive-এ।
