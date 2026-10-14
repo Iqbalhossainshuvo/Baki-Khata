@@ -1,0 +1,15 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.bakikhata'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.googleauth"
+}
+
+dependencies {
+  implementation "com.google.android.gms:play-services-auth:21.4.0"
+}
