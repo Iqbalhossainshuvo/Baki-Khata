@@ -16,3 +16,7 @@
 5. Open the web app URL (add it to your phone's home screen for an app-like feel).
 
 The currency label is set by `CUR` at the top of the script in `Index.html` (default `SAR`).
+
+## Mobile app (iPhone + Android)
+
+`mobile/` contains a React Native + Expo app with one-tap Google sign-in. Each user's ledger is stored in a Google Sheet in their own Google Drive — no shared server. See [`mobile/README.md`](mobile/README.md) for setup and build steps.
